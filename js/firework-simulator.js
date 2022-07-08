@@ -34,6 +34,11 @@
 const V_SHADER_SOURCE = `#version 300 es
 	in vec4 a_p;		// Position
 	in float a_p_s;		// Point size
+	
+	// Colors for alpha changing
+	uniform vec4 u_c;
+	out vec4 in_c;
+	
 	in vec2 a_t_coord;
 
 	out vec2 v_t_coord;
@@ -44,7 +49,7 @@ const V_SHADER_SOURCE = `#version 300 es
 	void main() {
 		gl_PointSize = a_p_s;
 		gl_Position = u_pv_mat * u_m_mat * a_p;
-
+		in_c = u_c;
 		v_t_coord = a_t_coord;
 	}
 `
@@ -52,6 +57,7 @@ const V_SHADER_SOURCE = `#version 300 es
 // Fragment shader
 const F_SHADER_SOURCE = `#version 300 es
 	precision highp float;
+	in vec4 in_c;	// Input color
 	out vec4 out_c; // Output color
 
 	in vec2 v_t_coord;
@@ -59,7 +65,14 @@ const F_SHADER_SOURCE = `#version 300 es
 	uniform sampler2D u_img;
 	
 	void main() {
-		out_c = texture(u_img, v_t_coord);
+		float alpha = in_c.a;
+		float tex_alpha = texture(u_img, v_t_coord).a;
+		
+		if (alpha < tex_alpha) {
+			out_c = vec4(texture(u_img, v_t_coord).rgb, alpha);
+		} else {
+			out_c = texture(u_img, v_t_coord);
+		}
 	}
 `
 
@@ -144,11 +157,15 @@ function main() {
 // Fire a firework
 function fireFirework(fireworksArray) {
 	let initialParticles = [];
+	let vx = Math.random() * 0.04 - 0.02;
+	let vy = Math.random() * 0.1 + 0.15;
+	let vz = Math.random() * 0.04 - 0.02;
+	
 	for (let i = 0; i < 10; i++) {
-		initialParticles.push(new Particle(1, [0, 0, 0], [0, 0.1, 0], [1, 1, 1, 1], 1));
+		initialParticles.push(new Particle(i, [0, 0, 0], [vx, vy, vz], [1, 1, 1, 1], 1, 0));
 	}
 	
-	fireworksArray.push(new Firework(initialParticles));
+	fireworksArray.push(new Firework(initialParticles, false));
 }
 
 // Draw a particle array
@@ -178,9 +195,30 @@ function updateFireworks(fireworksArray) {
 // update firework
 function updateFirework(firework) {
 	for (let i = 0; i < firework.particles.length; i++) {
-		firework.particles[i].position[0] += firework.particles[i].velocity[0];
-		firework.particles[i].position[1] += firework.particles[i].velocity[1];
-		firework.particles[i].position[2] += firework.particles[i].velocity[2];
+		firework.particles[i].lifetime += 0.01;
+		
+		if (firework.particles[i].lifetime > firework.particles[i].offset / 100) {
+			firework.particles[i].position[0] += firework.particles[i].velocity[0];
+			firework.particles[i].position[1] += firework.particles[i].velocity[1];
+			firework.particles[i].position[2] += firework.particles[i].velocity[2];
+			
+			firework.particles[i].velocity[1] -= 0.0009;
+		}
+	}
+	
+	if (firework.particles[0].velocity[1] < 0.07 && firework.particles[0].lifetime > firework.particles[0].offset / 100 && !firework.exploded) {
+		firework.exploded = true;
+		for (let i = 0; i < firework.particles.length; i++) {
+			firework.particles[i].velocity[0] += Math.random() * 0.25 - 0.125;
+			firework.particles[i].velocity[1] += Math.random() * 0.25 - 0.125;
+			firework.particles[i].velocity[2] += Math.random() * 0.25 - 0.125;
+		}
+	}
+	
+	if (firework.exploded) {
+		for (let i = 0; i < firework.particles.length; i++) {
+			firework.particles[i].color[3] -= 0.005;
+		}
 	}
 }
 
@@ -232,8 +270,8 @@ function drawParticle(gl, particle, canvas) {
 	m_mat.setTranslate(particle.position[0], particle.position[1], particle.position[2]);
 	m_mat.scale((1 / ar) * particle.scale, (1 / ar) * particle.scale, (1 / ar) * particle.scale);
 	
-	pv_mat.setPerspective(30, canvas.width/canvas.height, 1, 10000);
-	pv_mat.lookAt(0, 5, 20, 0, 0, 0, 0, 1, 0);
+	pv_mat.setPerspective(45, canvas.width/canvas.height, 1, 10000);
+	pv_mat.lookAt(5, -5, 50, 0, 15, 0, 0, 1, 0);
 
 	let u_m_mat = gl.getUniformLocation(gl.program, "u_m_mat");
 	gl.uniformMatrix4fv(u_m_mat, false, m_mat.elements);
@@ -243,26 +281,32 @@ function drawParticle(gl, particle, canvas) {
 
 	let u_img = gl.getUniformLocation(gl.program, "u_img");
 	gl.uniform1i(u_img, 0);
-
+	
+	let u_c = gl.getUniformLocation(gl.program, "u_c");
+	gl.uniform4f(u_c, particle.color[0], particle.color[1], particle.color[2], particle.color[3])
+	//gl.vertexAttribPointer(v_c, 4, gl.FLOAT, false, particle.color[0], particle.color[1], particle.color[2], particle.color[3]);
+	
 	// Vertex shader pointers
 	let a_p = gl.getAttribLocation(gl.program, "a_p");
-	let a_p_s = gl.getAttribLocation(gl.program, "a_p_s");
+	let a_p_s = gl.getAttribLocation(gl.program, "a_p_s");	
 
 	gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
 // Particle constructor
-function Particle(size, position, velocity, color, scale) {
-	this.size = size;
+function Particle(offset, position, velocity, color, scale, lifetime) {
+	this.offset = offset;
 	this.position = position;
 	this.velocity = velocity;
 	this.color = color;
 	this.scale = scale;
+	this.lifetime = lifetime;
 }
 
 // Firework constructor
-function Firework(particles) {
+function Firework(particles, exploded) {
 	this.particles = particles;
+	this.exploded = exploded;
 }
 
 // Quick distance check
