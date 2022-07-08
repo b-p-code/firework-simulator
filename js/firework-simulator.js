@@ -278,8 +278,9 @@ function drawParticle(gl, particle, canvas, rotate) {
 	let ar = canvas.width / canvas.height;
 
 	m_mat.setIdentity();
-	m_mat.setTranslate(particle.position[0], particle.position[1], particle.position[2]);
+	m_mat.translate(particle.position[0], particle.position[1], particle.position[2]);
 	m_mat.scale((1 / ar) * particle.scale, (1 / ar) * particle.scale, (1 / ar) * particle.scale);
+	m_mat.rotate(-global_rotate, 0, 1, 0);
 
 	p_mat.setPerspective(45, canvas.width/canvas.height, 1, 10000);
 	v_mat.setLookAt(5, -5, 50, 0, 15, 0, 0, 1, 0);
