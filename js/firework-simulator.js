@@ -8,6 +8,8 @@
 
 /***** DESCRIPTION *****/
 // Displays simple fireworks
+// STILL NEEDS SOME OBJECT MANAGEMENT
+// FIREWORKS ARE NOT DESTROYED
 /***********************/
 
 /***** COPYRIGHT *****/
@@ -43,12 +45,13 @@ const V_SHADER_SOURCE = `#version 300 es
 
 	out vec2 v_t_coord;
 	
-	uniform mat4 u_pv_mat;
+	uniform mat4 u_v_mat;
+	uniform mat4 u_p_mat;
 	uniform mat4 u_m_mat;
 	
 	void main() {
 		gl_PointSize = a_p_s;
-		gl_Position = u_pv_mat * u_m_mat * a_p;
+		gl_Position = u_p_mat * u_v_mat * u_m_mat * a_p;
 		in_c = u_c;
 		v_t_coord = a_t_coord;
 	}
@@ -86,6 +89,10 @@ let config = {
 	CIRCLE: false,
 }
 
+// NOTE - not ideal, will change this global var later
+// it's just a quick fix
+let global_rotate = 0;
+
 // Main program
 function main() {
 	// Animation ID
@@ -118,6 +125,9 @@ function main() {
 	// Set firework button
 	let fireworkButton= document.getElementById("firework");
 	fireworkButton.onclick = function() { fireFirework(fireworks) };
+	
+	// Get rotation button
+	let rotate = document.getElementById("rotate");
 
 	setupImage(webGL);
 	setupBuffers(webGL);
@@ -142,7 +152,7 @@ function main() {
 
 			// Draw the particles
 			if (fireworks.length !== 0) {
-				drawFireworks(canvas, webGL, fireworks);
+				drawFireworks(canvas, webGL, fireworks, rotate.checked);
 			}
 		}
 		
@@ -169,7 +179,7 @@ function fireFirework(fireworksArray) {
 }
 
 // Draw a particle array
-function drawFireworks(canvas, webGL, fireworksArray) {
+function drawFireworks(canvas, webGL, fireworksArray, checked) {
 	updateFireworks(fireworksArray);
 	
 	let particles = [];
@@ -181,7 +191,7 @@ function drawFireworks(canvas, webGL, fireworksArray) {
 	}
 	
 	for (let i = 0; i < particles.length; i++) {
-		drawParticle(webGL, particles[i], canvas);
+		drawParticle(webGL, particles[i], canvas, checked);
 	}
 }
 
@@ -260,24 +270,32 @@ function setupBuffers(gl) {
 }
 
 // Draw a singular particle
-function drawParticle(gl, particle, canvas) {
+function drawParticle(gl, particle, canvas, rotate) {
 	let m_mat = new Matrix4();
-	let pv_mat = new Matrix4();
+	let p_mat = new Matrix4();
+	let v_mat = new Matrix4();
 
 	let ar = canvas.width / canvas.height;
 
 	m_mat.setIdentity();
 	m_mat.setTranslate(particle.position[0], particle.position[1], particle.position[2]);
 	m_mat.scale((1 / ar) * particle.scale, (1 / ar) * particle.scale, (1 / ar) * particle.scale);
-	
-	pv_mat.setPerspective(45, canvas.width/canvas.height, 1, 10000);
-	pv_mat.lookAt(5, -5, 50, 0, 15, 0, 0, 1, 0);
 
+	p_mat.setPerspective(45, canvas.width/canvas.height, 1, 10000);
+	v_mat.setLookAt(5, -5, 50, 0, 15, 0, 0, 1, 0);
+	if (rotate) {
+		global_rotate += 0.01;
+	}
+	v_mat.rotate(global_rotate, 0, 1, 0);
+	
 	let u_m_mat = gl.getUniformLocation(gl.program, "u_m_mat");
 	gl.uniformMatrix4fv(u_m_mat, false, m_mat.elements);
 	
-	let u_pv_mat = gl.getUniformLocation(gl.program, "u_pv_mat");
-	gl.uniformMatrix4fv(u_pv_mat, false, pv_mat.elements);
+	let u_p_mat = gl.getUniformLocation(gl.program, "u_p_mat");
+	gl.uniformMatrix4fv(u_p_mat, false, p_mat.elements);
+	
+	let u_v_mat = gl.getUniformLocation(gl.program, "u_v_mat");
+	gl.uniformMatrix4fv(u_v_mat, false, v_mat.elements);
 
 	let u_img = gl.getUniformLocation(gl.program, "u_img");
 	gl.uniform1i(u_img, 0);
