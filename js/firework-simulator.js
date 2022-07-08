@@ -200,6 +200,10 @@ function updateFireworks(fireworksArray) {
 	for (let i = 0; i < fireworksArray.length; i++) {
 		updateFirework(fireworksArray[i]);
 	}
+	
+	if (fireworksArray[0].lifetime > 10) {
+		fireworksArray.shift();
+	}
 }
 
 // update firework
