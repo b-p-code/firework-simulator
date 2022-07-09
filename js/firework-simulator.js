@@ -95,6 +95,9 @@ let global_rotate = 0;
 
 // Main program
 function main() {
+	// Texture source array
+	let urls = ["img/particle.png", "img/particle2.png", "img/particle3.png"];
+	
 	// Animation ID
 	let animID = 1;
 
@@ -121,16 +124,20 @@ function main() {
 		webGL.viewport(0, 0, canvas.width, canvas.height);
 	}
 	
-
-	// Set firework button
-	let fireworkButton= document.getElementById("firework");
-	fireworkButton.onclick = function() { fireFirework(fireworks) };
 	
 	// Get rotation button
 	let rotate = document.getElementById("rotate");
 
-	setupImage(webGL);
+	setupImages(webGL, urls);
 	setupBuffers(webGL);
+	
+	// Set firework button
+	let fireworkButton= document.getElementById("firework");
+	
+	// Each firework has an associated image that comes from the image url array
+	// To select an image, use the imageID which is the last argument in fireFireworks
+	// The imageID corresponds to the image url's position in the url array
+	fireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 4 - 1)) };
 	
 	// Set up the special blending for the black background
 	webGL.enable(webGL.DEPTH_TEST);
@@ -144,7 +151,7 @@ function main() {
 	let update = function() {
 		// Cancel previous frame
 		cancelAnimationFrame(animID);
-		if (webGL.texturesReady) {
+		if (webGL.texturesReady.length === urls.length) {
 
 			// Clear the canvas
 			webGL.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -165,14 +172,14 @@ function main() {
 }
 
 // Fire a firework
-function fireFirework(fireworksArray) {
+function fireFirework(fireworksArray, imageID) {
 	let initialParticles = [];
 	let vx = Math.random() * 0.04 - 0.02;
 	let vy = Math.random() * 0.1 + 0.15;
 	let vz = Math.random() * 0.04 - 0.02;
 	
 	for (let i = 0; i < 10; i++) {
-		initialParticles.push(new Particle(i, [0, 0, 0], [vx, vy, vz], [1, 1, 1, 1], 1, 0));
+		initialParticles.push(new Particle(i, [0, 0, 0], [vx, vy, vz], [1, 1, 1, 1], 1, 0, imageID));
 	}
 	
 	fireworksArray.push(new Firework(initialParticles, false));
@@ -191,7 +198,7 @@ function drawFireworks(canvas, webGL, fireworksArray, checked) {
 	}
 	
 	for (let i = 0; i < particles.length; i++) {
-		drawParticle(webGL, particles[i], canvas, checked);
+		drawParticle(webGL, particles[i], canvas, checked, );
 	}
 }
 
@@ -237,21 +244,23 @@ function updateFirework(firework) {
 }
 
 // Set up the image
-function setupImage(gl) {
-	gl.texturesReady = false;
-	texture = gl.createTexture();
-	img = new Image();
-	img.crossOrigin = "";
-	img.src = "img/particle.png";
-	img.onload = function () {
-		gl.activeTexture(gl.TEXTURE0);
-		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-		gl.bindTexture(gl.TEXTURE_2D, texture);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+function setupImages(gl, urls) {
+	gl.texturesReady = [];
+	for (let i = 0; i < urls.length; i++) {
+		let texture = gl.createTexture();
+		let img = new Image();
+		img.crossOrigin = "";
+		img.src = urls[i];
+		img.onload = function () {
+			gl.activeTexture(gl.TEXTURE0 + i);
+			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+			gl.bindTexture(gl.TEXTURE_2D, texture);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
-		gl.texturesReady = true;
+			gl.texturesReady.push(true);
+		}
 	}
 }
 
@@ -275,9 +284,9 @@ function setupBuffers(gl) {
 
 // Draw a singular particle
 function drawParticle(gl, particle, canvas, rotate) {
-	let m_mat = new Matrix4();
 	let p_mat = new Matrix4();
 	let v_mat = new Matrix4();
+	let m_mat = new Matrix4();
 
 	let ar = canvas.width / canvas.height;
 
@@ -303,11 +312,10 @@ function drawParticle(gl, particle, canvas, rotate) {
 	gl.uniformMatrix4fv(u_v_mat, false, v_mat.elements);
 
 	let u_img = gl.getUniformLocation(gl.program, "u_img");
-	gl.uniform1i(u_img, 0);
+	gl.uniform1i(u_img, particle.imageID);
 	
 	let u_c = gl.getUniformLocation(gl.program, "u_c");
 	gl.uniform4f(u_c, particle.color[0], particle.color[1], particle.color[2], particle.color[3])
-	//gl.vertexAttribPointer(v_c, 4, gl.FLOAT, false, particle.color[0], particle.color[1], particle.color[2], particle.color[3]);
 	
 	// Vertex shader pointers
 	let a_p = gl.getAttribLocation(gl.program, "a_p");
@@ -317,17 +325,18 @@ function drawParticle(gl, particle, canvas, rotate) {
 }
 
 // Particle constructor
-function Particle(offset, position, velocity, color, scale, lifetime) {
+function Particle(offset, position, velocity, color, scale, lifetime, imageID) {
 	this.offset = offset;
 	this.position = position;
 	this.velocity = velocity;
 	this.color = color;
 	this.scale = scale;
 	this.lifetime = lifetime;
+	this.imageID = imageID;
 }
 
 // Firework constructor
-function Firework(particles, exploded) {
+function Firework(particles, exploded, imageID) {
 	this.particles = particles;
 	this.exploded = exploded;
 }
@@ -346,32 +355,4 @@ function clamp(value, min, max) {
 	} else {
 		return value;
 	}
-}
-
-// HSV to RGB color conversion
-// Based off of this code: https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
-/**
- * Converts an HSV color value to RGB. Conversion formula
- * adapted from http://en.wikipedia.org/wiki/HSV_color_space.
- * Assumes h, s, and v are contained in the set [0, 1] and
- * returns r, g, and b in the set [0, 1].
- */
-function hsvToRgb(h, s, v) {
-    var r, g, b;
-    var i = Math.floor(h * 6);
-    var f = h * 6 - i;
-    var p = v * (1 - s);
-    var q = v * (1 - f * s);
-    var t = v * (1 - (1 - f) * s);
-
-    switch(i % 6){
-        case 0: r = v, g = t, b = p; break;
-        case 1: r = q, g = v, b = p; break;
-        case 2: r = p, g = v, b = t; break;
-        case 3: r = p, g = q, b = v; break;
-        case 4: r = t, g = p, b = v; break;
-        case 5: r = v, g = p, b = q; break;
-    }
-
-    return [r, g, b];
 }
