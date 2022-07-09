@@ -137,7 +137,7 @@ function main() {
 	// Each firework has an associated image that comes from the image url array
 	// To select an image, use the imageID which is the last argument in fireFireworks
 	// The imageID corresponds to the image url's position in the url array
-	fireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 4 - 1)) };
+	fireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 3)) };
 	
 	// Set up the special blending for the black background
 	webGL.enable(webGL.DEPTH_TEST);
