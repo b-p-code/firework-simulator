@@ -96,7 +96,13 @@ let global_rotate = 0;
 // Main program
 function main() {
 	// Texture source array
-	let urls = ["img/particle.png", "img/particle2.png", "img/particle3.png"];
+	let urls = [
+		"img/particle.png",
+		"img/particle2.png", 
+		"img/particle3.png",
+		"img/particle4.png",
+		"img/particle5.png",
+	];
 	
 	// Animation ID
 	let animID = 1;
@@ -137,7 +143,7 @@ function main() {
 	// Each firework has an associated image that comes from the image url array
 	// To select an image, use the imageID which is the last argument in fireFireworks
 	// The imageID corresponds to the image url's position in the url array
-	fireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 3)) };
+	fireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 5)) };
 	
 	// Set up the special blending for the black background
 	webGL.enable(webGL.DEPTH_TEST);
@@ -179,7 +185,7 @@ function fireFirework(fireworksArray, imageID) {
 	let vz = Math.random() * 0.04 - 0.02;
 	
 	for (let i = 0; i < 10; i++) {
-		initialParticles.push(new Particle(i, [0, 0, 0], [vx, vy, vz], [1, 1, 1, 1], 1, 0, imageID));
+		initialParticles.push(new Particle(i, [0, 0, 0], [vx, vy, vz], [1, 1, 1, 1], 2, 0, imageID));
 	}
 	
 	fireworksArray.push(new Firework(initialParticles, false));
