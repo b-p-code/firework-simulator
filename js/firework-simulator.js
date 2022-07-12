@@ -164,6 +164,7 @@ function main() {
 			webGL.clear(webGL.COLOR_BUFFER_BIT);
 
 			// Draw the particles
+			console.log(fireworks.length);
 			if (fireworks.length !== 0) {
 				drawFireworks(canvas, webGL, fireworks, rotate.checked);
 			}
@@ -213,8 +214,7 @@ function updateFireworks(fireworksArray) {
 	for (let i = 0; i < fireworksArray.length; i++) {
 		updateFirework(fireworksArray[i]);
 	}
-	
-	if (fireworksArray[0].lifetime > 10) {
+	if (fireworksArray[0].particles[0].lifetime > 4) {
 		fireworksArray.shift();
 	}
 }
