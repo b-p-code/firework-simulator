@@ -32,6 +32,11 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 /*********************/
 
+/***** TO-DO *****/
+// Add circular firework
+// Add smile firework
+/*****************/
+
 // Vertex shader
 const V_SHADER_SOURCE = `#version 300 es
 	in vec4 a_p;		// Position
@@ -164,6 +169,7 @@ function main() {
 			webGL.clear(webGL.COLOR_BUFFER_BIT);
 
 			// Draw the particles
+			console.log(fireworks.length);
 			if (fireworks.length !== 0) {
 				drawFireworks(canvas, webGL, fireworks, rotate.checked);
 			}
