@@ -164,7 +164,6 @@ function main() {
 			webGL.clear(webGL.COLOR_BUFFER_BIT);
 
 			// Draw the particles
-			console.log(fireworks.length);
 			if (fireworks.length !== 0) {
 				drawFireworks(canvas, webGL, fireworks, rotate.checked);
 			}
