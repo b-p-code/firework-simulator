@@ -92,6 +92,8 @@ let config = {
 	PARTICLES: 50,
 	COLOR: 180,
 	CIRCLE: false,
+	REGULAR: false,
+	SMILE: true,
 }
 
 // NOTE - not ideal, will change this global var later
@@ -143,12 +145,15 @@ function main() {
 	setupBuffers(webGL);
 	
 	// Set firework button
-	let fireworkButton= document.getElementById("firework");
+	let regFireworkButton = document.getElementById("regular");
+	// Set firework button
+	let smileFireworkButton = document.getElementById("smile");
 	
 	// Each firework has an associated image that comes from the image url array
 	// To select an image, use the imageID which is the last argument in fireFireworks
 	// The imageID corresponds to the image url's position in the url array
-	fireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 5)) };
+	regFireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 5), false) };
+	smileFireworkButton.onclick = function() { fireFirework(fireworks, Math.floor(Math.random() * 5), true) };
 	
 	// Set up the special blending for the black background
 	webGL.enable(webGL.DEPTH_TEST);
@@ -184,17 +189,17 @@ function main() {
 }
 
 // Fire a firework
-function fireFirework(fireworksArray, imageID) {
+function fireFirework(fireworksArray, imageID, smile) {
 	let initialParticles = [];
 	let vx = Math.random() * 0.04 - 0.02;
 	let vy = Math.random() * 0.1 + 0.15;
 	let vz = Math.random() * 0.04 - 0.02;
 	
-	for (let i = 0; i < 10; i++) {
+	for (let i = 0; i < 20; i++) {
 		initialParticles.push(new Particle(i, [0, 0, 0], [vx, vy, vz], [1, 1, 1, 1], 2, 0, imageID));
 	}
 	
-	fireworksArray.push(new Firework(initialParticles, false));
+	fireworksArray.push(new Firework(initialParticles, false, smile));
 }
 
 // Draw a particle array
@@ -240,10 +245,42 @@ function updateFirework(firework) {
 	
 	if (firework.particles[0].velocity[1] < 0.07 && firework.particles[0].lifetime > firework.particles[0].offset / 100 && !firework.exploded) {
 		firework.exploded = true;
-		for (let i = 0; i < firework.particles.length; i++) {
-			firework.particles[i].velocity[0] += Math.random() * 0.25 - 0.125;
-			firework.particles[i].velocity[1] += Math.random() * 0.25 - 0.125;
-			firework.particles[i].velocity[2] += Math.random() * 0.25 - 0.125;
+		
+		if (!firework.smile) {
+			for (let i = 0; i < firework.particles.length; i++) {
+				firework.particles[i].velocity[0] += Math.random() * 0.25 - 0.125;
+				firework.particles[i].velocity[1] += Math.random() * 0.25 - 0.125;
+				firework.particles[i].velocity[2] += Math.random() * 0.25 - 0.125;
+			}
+		} else if (firework.smile) {
+			for (let i = 0; i < firework.particles.length - 8; i++) {
+				let angle = 360.0 / (firework.particles.length - 8);
+				angle = (Math.PI * angle) / 180.0;
+				let x = Math.cos(angle * i) * 0.2;
+				let z = Math.sin(angle * i) * 0.2;
+				firework.particles[i].velocity[0] += x;
+				firework.particles[i].velocity[1] += 0;
+				firework.particles[i].velocity[2] += z;
+			}
+			
+			firework.particles[firework.particles.length - 1].velocity[0] += Math.cos(Math.PI / 4) * 0.1;
+			firework.particles[firework.particles.length - 1].velocity[1] += 0;
+			firework.particles[firework.particles.length - 1].velocity[2] += Math.sin(Math.PI / 4) * 0.1;
+			
+			firework.particles[firework.particles.length - 2].velocity[0] += -Math.cos(Math.PI / 4) * 0.1;
+			firework.particles[firework.particles.length - 2].velocity[1] += 0;
+			firework.particles[firework.particles.length - 2].velocity[2] += Math.sin(Math.PI / 4) * 0.1;
+			
+			for (let i = 1; i < 7; i++) {
+				let angle = 360.0 / 12;
+				angle = (Math.PI * angle) / 180.0;
+				let x = Math.cos(angle * (i + 6)) * 0.1;
+				let z = Math.sin(angle * (i + 6)) * 0.1;
+				firework.particles[firework.particles.length - 2 - i].velocity[0] += x;
+				firework.particles[firework.particles.length - 2 - i].velocity[1] += 0;
+				firework.particles[firework.particles.length - 2 - i].velocity[2] += z;
+			}
+			
 		}
 	}
 	
@@ -347,9 +384,10 @@ function Particle(offset, position, velocity, color, scale, lifetime, imageID) {
 }
 
 // Firework constructor
-function Firework(particles, exploded, imageID) {
+function Firework(particles, exploded, smile) {
 	this.particles = particles;
 	this.exploded = exploded;
+	this.smile = smile;
 }
 
 // Quick distance check
